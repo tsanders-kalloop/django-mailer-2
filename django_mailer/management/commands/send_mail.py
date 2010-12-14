@@ -1,16 +1,17 @@
-from django.conf import settings
 from django.core.management.base import NoArgsCommand
 from django.db import connection
-from django_mailer import models
+from django_mailer import models, settings
 from django_mailer.engine import send_all
 from django_mailer.management.commands import create_handler
 from optparse import make_option
 import logging
 import sys
-
-
-# Provide a way of temporarily pausing the sending of mail.
-PAUSE_SEND = getattr(settings, "MAILER_PAUSE_SEND", False)
+try:
+    from django.core.mail import get_connection
+    EMAIL_BACKEND_SUPPORT = True
+except ImportError:
+    # Django version < 1.2
+    EMAIL_BACKEND_SUPPORT = False
 
 
 class Command(NoArgsCommand):
@@ -41,8 +42,11 @@ class Command(NoArgsCommand):
         logger.addHandler(handler)
 
         # if PAUSE_SEND is turned on don't do anything.
-        if not PAUSE_SEND:
-            send_all(block_size)
+        if not settings.PAUSE_SEND:
+            if EMAIL_BACKEND_SUPPORT:
+                send_all(block_size, backend=settings.USE_BACKEND)
+            else:
+                send_all(block_size)
         else:
             logger = logging.getLogger('django_mailer.commands.send_mail')
             logger.warning("Sending is paused, exiting without sending "

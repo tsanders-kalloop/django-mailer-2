@@ -1,5 +1,5 @@
 from django.test import TestCase
-from django_mailer import engine
+from django_mailer import engine, settings
 from django_mailer.lockfile import FileLock
 from StringIO import StringIO
 import logging
@@ -25,8 +25,8 @@ class LockTest(TestCase):
         logger.addHandler(self.handler)
         
         # Set the LOCK_WAIT_TIMEOUT to the default value.
-        self.original_timeout = engine.LOCK_WAIT_TIMEOUT
-        engine.LOCK_WAIT_TIMEOUT = -1
+        self.original_timeout = settings.LOCK_WAIT_TIMEOUT
+        settings.LOCK_WAIT_TIMEOUT = -1
 
     def tearDown(self):
         # Remove the log handler.
@@ -34,7 +34,7 @@ class LockTest(TestCase):
         logger.removeHandler(self.handler)
 
         # Revert the LOCK_WAIT_TIMEOUT to it's original value.
-        engine.LOCK_WAIT_TIMEOUT = self.original_timeout
+        settings.LOCK_WAIT_TIMEOUT = self.original_timeout
 
     def test_locked(self):
         # Acquire the lock (under a different unique name) so that send_all
@@ -48,7 +48,7 @@ class LockTest(TestCase):
             self.assertEqual(self.output.readlines()[-1].strip(),
                              'Lock already in place. Exiting.')
             # Try with a timeout.
-            engine.LOCK_WAIT_TIMEOUT = .1
+            settings.LOCK_WAIT_TIMEOUT = .1
             engine.send_all()
             self.output.seek(0)
             self.assertEqual(self.output.readlines()[-1].strip(),

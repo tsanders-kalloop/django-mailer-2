@@ -4,9 +4,7 @@ The "engine room" of django mailer.
 Methods here actually handle the sending of queued messages.
 
 """
-from django.conf import settings
-from django.core.mail import SMTPConnection
-from django_mailer import constants, models
+from django_mailer import constants, models, settings
 from lockfile import FileLock, AlreadyLocked, LockTimeout
 from socket import error as SocketError
 import logging
@@ -15,13 +13,10 @@ import tempfile
 import time
 import os
 
-
-# When queue is empty, how long to wait (in seconds) before checking again.
-EMPTY_QUEUE_SLEEP = getattr(settings, "MAILER_EMPTY_QUEUE_SLEEP", 30)
-
-# Lock timeout value. how long to wait for the lock to become available.
-# default behavior is to never wait for the lock to be available.
-LOCK_WAIT_TIMEOUT = getattr(settings, "MAILER_LOCK_WAIT_TIMEOUT", -1)
+if constants.EMAIL_BACKEND_SUPPORT:
+    from django.core.mail import get_connection
+else:
+    from django.core.mail import SMTPConnection as get_connection
 
 LOCK_PATH = os.path.join(tempfile.gettempdir(), 'send_mail')
 
@@ -33,9 +28,9 @@ def _message_queue(block_size):
     A generator which iterates queued messages in blocks so that new
     prioritised messages can be inserted during iteration of a large number of
     queued messages.
-    
+
     To avoid an infinite loop, yielded messages *must* be deleted or deferred.
-    
+
     """
     def get_block():
         queue = models.QueuedMessage.objects.non_deferred().select_related()
@@ -49,17 +44,17 @@ def _message_queue(block_size):
         queue = get_block()
 
 
-def send_all(block_size=500):
+def send_all(block_size=500, backend=None):
     """
     Send all non-deferred messages in the queue.
-    
+
     A lock file is used to ensure that this process can not be started again
     while it is already running.
-    
+
     The ``block_size`` argument allows for queued messages to be iterated in
     blocks, allowing new prioritised messages to be inserted during iteration
     of a large number of queued messages.
-    
+
     """
     lock = FileLock(LOCK_PATH)
 
@@ -68,7 +63,8 @@ def send_all(block_size=500):
         # lockfile has a bug dealing with a negative LOCK_WAIT_TIMEOUT (which
         # is the default if it's not provided) systems which use a LinkFileLock
         # so ensure that it is never a negative number.
-        lock.acquire(LOCK_WAIT_TIMEOUT and max(0, LOCK_WAIT_TIMEOUT))
+        lock.acquire(settings.LOCK_WAIT_TIMEOUT and max(0, settings.LOCK_WAIT_TIMEOUT))
+        #lock.acquire(settings.LOCK_WAIT_TIMEOUT)
     except AlreadyLocked:
         logger.debug("Lock already in place. Exiting.")
         return
@@ -82,11 +78,14 @@ def send_all(block_size=500):
     sent = deferred = skipped = 0
 
     try:
-        connection = SMTPConnection()
+        if constants.EMAIL_BACKEND_SUPPORT:
+            connection = get_connection(backend=backend)
+        else:
+            connection = get_connection()
         blacklist = models.Blacklist.objects.values_list('email', flat=True)
         connection.open()
         for message in _message_queue(block_size):
-            result = send_message(message, smtp_connection=connection,
+            result = send_queued_message(message, smtp_connection=connection,
                                   blacklist=blacklist)
             if result == constants.RESULT_SENT:
                 sent += 1
@@ -113,13 +112,13 @@ def send_loop(empty_queue_sleep=None):
     """
     Loop indefinitely, checking queue at intervals and sending and queued
     messages.
-    
+
     The interval (in seconds) can be provided as the ``empty_queue_sleep``
     argument. The default is attempted to be retrieved from the
     ``MAILER_EMPTY_QUEUE_SLEEP`` setting (or if not set, 30s is used).
-    
+
     """
-    empty_queue_sleep = empty_queue_sleep or EMPTY_QUEUE_SLEEP
+    empty_queue_sleep = empty_queue_sleep or settings.EMPTY_QUEUE_SLEEP
     while True:
         while not models.QueuedMessage.objects.all():
             logger.debug("Sleeping for %s seconds before checking queue "
@@ -128,33 +127,33 @@ def send_loop(empty_queue_sleep=None):
         send_all()
 
 
-def send_message(queued_message, smtp_connection=None, blacklist=None,
+def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
                  log=True):
     """
     Send a queued message, returning a response code as to the action taken.
-    
+
     The response codes can be found in ``django_mailer.constants``. The
     response will be either ``RESULT_SKIPPED`` for a blacklisted email,
     ``RESULT_FAILED`` for a deferred message or ``RESULT_SENT`` for a
     successful sent message.
-    
+
     To allow optimizations if multiple messages are to be sent, an SMTP
     connection can be provided and a list of blacklisted email addresses.
     Otherwise an SMTP connection will be opened to send this message and the
     email recipient address checked against the ``Blacklist`` table.
-    
+
     If the message recipient is blacklisted, the message will be removed from
     the queue without being sent. Otherwise, the message is attempted to be
     sent with an SMTP failure resulting in the message being flagged as
     deferred so it can be tried again later.
-    
+
     By default, a log is created as to the action. Either way, the original
     message is not deleted.
-    
+
     """
     message = queued_message.message
     if smtp_connection is None:
-        smtp_connection = SMTPConnection()
+        smtp_connection = get_connection()
     opened_connection = False
 
     if blacklist is None:
@@ -190,6 +189,41 @@ def send_message(queued_message, smtp_connection=None, blacklist=None,
     if log:
         models.Log.objects.create(message=message, result=result,
                                   log_message=log_message)
+
+    if opened_connection:
+        smtp_connection.close()
+    return result
+
+
+def send_message(email_message, smtp_connection=None):
+    """
+    Send an EmailMessage, returning a response code as to the action taken.
+
+    The response codes can be found in ``django_mailer.constants``. The
+    response will be either ``RESULT_FAILED`` for a failed send or
+    ``RESULT_SENT`` for a successfully sent message.
+
+    To allow optimizations if multiple messages are to be sent, an SMTP
+    connection can be provided. Otherwise an SMTP connection will be opened
+    to send this message.
+
+    This function does not perform any logging or queueing.
+
+    """
+    if smtp_connection is None:
+        smtp_connection = get_connection()
+    opened_connection = False
+
+    try:
+        opened_connection = smtp_connection.open()
+        smtp_connection.connection.sendmail(email_message.from_email,
+                    email_message.recipients(),
+                    email_message.message().as_string())
+        result = constants.RESULT_SENT
+    except (SocketError, smtplib.SMTPSenderRefused,
+            smtplib.SMTPRecipientsRefused,
+            smtplib.SMTPAuthenticationError):
+        result = constants.RESULT_FAILED
 
     if opened_connection:
         smtp_connection.close()
