@@ -26,7 +26,15 @@ class LockTest(TestCase):
         
         # Set the LOCK_WAIT_TIMEOUT to the default value.
         self.original_timeout = engine.LOCK_WAIT_TIMEOUT
-        engine.LOCK_WAIT_TIMEOUT = -1
+        engine.LOCK_WAIT_TIMEOUT = 0
+
+        # Use a test lock-file name in case something goes wrong, then emulate
+        # that the lock file has already been acquired by another process.
+        self.original_lock_file_n = engine.LOCK_FILE
+        engine.LOCK_FILE += '.mailer-test'
+        self.lock = FileLock(engine.LOCK_FILE)
+        self.lock.unique_name += '.mailer_test'
+        self.lock.acquire(0)
 
     def tearDown(self):
         # Remove the log handler.
@@ -36,31 +44,24 @@ class LockTest(TestCase):
         # Revert the LOCK_WAIT_TIMEOUT to it's original value.
         engine.LOCK_WAIT_TIMEOUT = self.original_timeout
 
+        # Revert the lock file unique name
+        engine.LOCK_FILE = self.original_lock_file_n
+        self.lock.release()
+
     def test_locked(self):
-        # Acquire the lock (under a different unique name) so that send_all
-        # will fail.
-        lock = FileLock(engine.LOCK_PATH)
-        lock.unique_name = 'mailer-test'
-        lock.acquire()
-        try:
-            engine.send_all()
-            self.output.seek(0)
-            self.assertEqual(self.output.readlines()[-1].strip(),
-                             'Lock already in place. Exiting.')
-            # Try with a timeout.
-            engine.LOCK_WAIT_TIMEOUT = .1
-            engine.send_all()
-            self.output.seek(0)
-            self.assertEqual(self.output.readlines()[-1].strip(),
-                             'Waiting for the lock timed out. Exiting.')
-        finally:
-            # Always release the test lock.
-            lock.release()
+        # Acquire the lock so that send_all will fail.
+        engine.send_all()
+        self.output.seek(0)
+        self.assertEqual(self.output.readlines()[-1].strip(),
+                         'Lock already in place. Exiting.')
+        # Try with a timeout.
+        engine.LOCK_WAIT_TIMEOUT = .1
+        engine.send_all()
+        self.output.seek(0)
+        self.assertEqual(self.output.readlines()[-1].strip(),
+                         'Waiting for the lock timed out. Exiting.')
 
     def test_locked_timeoutbug(self):
-        lock = FileLock(engine.LOCK_PATH)
-        lock.unique_name = 'mailer-test'
-        lock.acquire()
         # We want to emulate the lock acquiring taking no time, so the next
         # three calls to time.time() always return 0 (then set it back to the
         # real function).
@@ -80,5 +81,4 @@ class LockTest(TestCase):
             self.assertEqual(self.output.readlines()[-1].strip(),
                              'Lock already in place. Exiting.')
         finally:
-            lock.release()
             time.time = original_time
