@@ -12,7 +12,7 @@ Contents:
 
     install
     usage
-
+    settings
 
 Django Mailer fork
 ==================
