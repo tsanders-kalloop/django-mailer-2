@@ -26,7 +26,8 @@ LOCK_WAIT_TIMEOUT = getattr(settings, "MAILER_LOCK_WAIT_TIMEOUT", 0)
 if LOCK_WAIT_TIMEOUT and LOCK_WAIT_TIMEOUT < 0:
     LOCK_WAIT_TIMEOUT = 0
 
-LOCK_PATH = os.path.join(tempfile.gettempdir(), 'send_mail')
+LOCK_PATH = getattr(settings, "MAILER_LOCK_PATH",
+                    os.path.join(tempfile.gettempdir(), 'send_mail'))
 
 logger = logging.getLogger('django_mailer.engine')
 
