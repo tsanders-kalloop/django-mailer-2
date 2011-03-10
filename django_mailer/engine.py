@@ -18,7 +18,8 @@ if constants.EMAIL_BACKEND_SUPPORT:
 else:
     from django.core.mail import SMTPConnection as get_connection
 
-LOCK_PATH = os.path.join(tempfile.gettempdir(), 'send_mail')
+LOCK_PATH = getattr(settings.LOCK_PATH,
+                    os.path.join(tempfile.gettempdir(), 'send_mail'))
 
 logger = logging.getLogger('django_mailer.engine')
 

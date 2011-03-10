@@ -19,3 +19,7 @@ EMPTY_QUEUE_SLEEP = getattr(settings, "MAILER_EMPTY_QUEUE_SLEEP", 30)
 # Lock timeout value. how long to wait for the lock to become available.
 # default behavior is to never wait for the lock to be available.
 LOCK_WAIT_TIMEOUT = max(getattr(settings, "MAILER_LOCK_WAIT_TIMEOUT", 0), 0)
+
+# An optional alternate lock path, potentially useful if you have multiple
+# projects running on the same server.
+LOCK_PATH = getattr(settings, "MAILER_LOCK_PATH", None)
