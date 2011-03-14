@@ -30,9 +30,9 @@ class LockTest(TestCase):
 
         # Use a test lock-file name in case something goes wrong, then emulate
         # that the lock file has already been acquired by another process.
-        self.original_lock_file_n = engine.LOCK_FILE
-        engine.LOCK_FILE += '.mailer-test'
-        self.lock = FileLock(engine.LOCK_FILE)
+        self.original_lock_path = engine.LOCK_PATH
+        engine.LOCK_PATH += '.mailer-test'
+        self.lock = FileLock(engine.LOCK_PATH)
         self.lock.unique_name += '.mailer_test'
         self.lock.acquire(0)
 
@@ -45,7 +45,7 @@ class LockTest(TestCase):
         settings.LOCK_WAIT_TIMEOUT = self.original_timeout
 
         # Revert the lock file unique name
-        engine.LOCK_FILE = self.original_lock_file_n
+        engine.LOCK_PATH = self.original_lock_path
         self.lock.release()
 
     def test_locked(self):
