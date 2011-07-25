@@ -64,3 +64,20 @@ class TestCommands(MailerTestCase):
         self.assertEqual(non_deferred_messages.count(), 1)
         call_command('retry_deferred', verbosity='0', max_retries=3)
         self.assertEqual(non_deferred_messages.count(), 3)
+
+    def test_idn_addresses(self):
+        """
+        To and from addresses should be encoded using ``idna`` before being
+        passed to the smtp server
+        """
+
+        # This is a valid IDN address, and will pass Django's email address
+        # validation.
+        from_email = u'someone@h\u200botmail.co.u\u200bk'
+        to_email = u'someone_else@h\u200botmail.co.u\u200bk'
+        self.queue_message(from_email=from_email, recipient_list=[to_email])
+        call_command('send_mail', verbosity='0')
+        self.assertEqual(1, len(mail.outbox))
+        m = mail.outbox[0]
+        self.assertEqual(from_email.encode('idna'), m.from_email)
+        self.assertEqual([to_email.encode('idna')], m.to)

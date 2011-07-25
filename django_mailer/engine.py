@@ -170,12 +170,14 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
         result = constants.RESULT_SKIPPED
     else:
         try:
+            from_address = message.from_address.encode('idna')
+            to_address = message.to_address.encode('idna')
             logger.info("Sending message to %s: %s" %
-                         (message.to_address.encode("utf-8"),
+                         (to_address,
                           message.subject.encode("utf-8")))
             opened_connection = smtp_connection.open()
-            smtp_connection.connection.sendmail(message.from_address,
-                                                [message.to_address],
+            smtp_connection.connection.sendmail(from_address,
+                                                [to_address],
                                                 message.encoded_message)
             queued_message.delete()
             result = constants.RESULT_SENT

@@ -12,16 +12,17 @@ class FakeConnection(object):
     """
     A fake SMTP connection which diverts emails to the test buffer rather than
     sending.
-    
+
     """
-    def sendmail(self, *args, **kwargs):
+    def sendmail(self, from_address, to_address, *args, **kwargs):
         """
         Divert an email to the test buffer.
-        
+
         """
         #FUTURE: the EmailMessage attributes could be found by introspecting
         # the encoded message.
-        message = mail.EmailMessage('SUBJECT', 'BODY', 'FROM', ['TO'])
+        message = mail.EmailMessage('SUBJECT', 'BODY', from_address,
+            to_address)
         mail.outbox.append(message)
 
 
