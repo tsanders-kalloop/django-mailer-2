@@ -35,16 +35,16 @@ if EMAIL_BACKEND_SUPPORT:
         def __init__(self, fail_silently=False, **kwargs):
             super(TestEmailBackend, self).__init__(fail_silently=fail_silently)
             self.connection = FakeConnection()
-            
+
         def send_messages(self, email_messages):
             pass
-        
+
 
 class MailerTestCase(TestCase):
     """
     A base class for Django Mailer test cases which diverts emails to the test
     buffer and provides some helper methods.
-    
+
     """
     def setUp(self):
         if EMAIL_BACKEND_SUPPORT:

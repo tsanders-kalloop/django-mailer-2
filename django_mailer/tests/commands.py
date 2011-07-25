@@ -14,7 +14,7 @@ class TestCommands(MailerTestCase):
         """
         The ``send_mail`` command initiates the sending of messages in the
         queue.
-        
+
         """
         # No action is taken if there are no messages.
         call_command('send_mail', verbosity='0')
@@ -36,7 +36,7 @@ class TestCommands(MailerTestCase):
         """
         The ``retry_deferred`` command places deferred messages back in the
         queue.
-        
+
         """
         self.queue_message()
         self.queue_message(subject='deferred')
