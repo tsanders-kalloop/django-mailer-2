@@ -4,14 +4,15 @@ The "engine room" of django mailer.
 Methods here actually handle the sending of queued messages.
 
 """
+from django.utils.encoding import smart_str
 from django_mailer import constants, models, settings
 from lockfile import FileLock, AlreadyLocked, LockTimeout
 from socket import error as SocketError
 import logging
+import os
 import smtplib
 import tempfile
 import time
-import os
 
 if constants.EMAIL_BACKEND_SUPPORT:
     from django.core.mail import get_connection
@@ -152,8 +153,6 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
     message is not deleted.
 
     """
-    from django.utils.encoding import smart_str
-    
     message = queued_message.message
     if smtp_connection is None:
         smtp_connection = get_connection()
@@ -177,8 +176,7 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
                           message.subject.encode("utf-8")))
             opened_connection = smtp_connection.open()
             smtp_connection.connection.sendmail(message.from_address,
-                                                [message.to_address],
-                                                smart_str(message.encoded_message))
+                [message.to_address], smart_str(message.encoded_message))
             queued_message.delete()
             result = constants.RESULT_SENT
         except (SocketError, smtplib.SMTPSenderRefused,
