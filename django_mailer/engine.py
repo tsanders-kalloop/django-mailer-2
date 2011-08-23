@@ -152,6 +152,8 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
     message is not deleted.
 
     """
+    from django.utils.encoding import smart_str
+    
     message = queued_message.message
     if smtp_connection is None:
         smtp_connection = get_connection()
@@ -176,7 +178,7 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
             opened_connection = smtp_connection.open()
             smtp_connection.connection.sendmail(message.from_address,
                                                 [message.to_address],
-                                                message.encoded_message)
+                                                smart_str(message.encoded_message))
             queued_message.delete()
             result = constants.RESULT_SENT
         except (SocketError, smtplib.SMTPSenderRefused,
