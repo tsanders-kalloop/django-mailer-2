@@ -12,16 +12,17 @@ class FakeConnection(object):
     """
     A fake SMTP connection which diverts emails to the test buffer rather than
     sending.
-    
+
     """
-    def sendmail(self, *args, **kwargs):
+    def sendmail(self, from_address, to_address, *args, **kwargs):
         """
         Divert an email to the test buffer.
-        
+
         """
         #FUTURE: the EmailMessage attributes could be found by introspecting
         # the encoded message.
-        message = mail.EmailMessage('SUBJECT', 'BODY', 'FROM', ['TO'])
+        message = mail.EmailMessage('SUBJECT', 'BODY', from_address,
+            to_address)
         mail.outbox.append(message)
 
 
@@ -35,16 +36,16 @@ if EMAIL_BACKEND_SUPPORT:
         def __init__(self, fail_silently=False, **kwargs):
             super(TestEmailBackend, self).__init__(fail_silently=fail_silently)
             self.connection = FakeConnection()
-            
+
         def send_messages(self, email_messages):
             pass
-        
+
 
 class MailerTestCase(TestCase):
     """
     A base class for Django Mailer test cases which diverts emails to the test
     buffer and provides some helper methods.
-    
+
     """
     def setUp(self):
         if EMAIL_BACKEND_SUPPORT:
