@@ -7,10 +7,11 @@ logger.setLevel(logging.DEBUG)
 
 
 def get_version():
-    if VERSION[3] != "final":
-        return "%s.%s.%s%s" % (VERSION[0], VERSION[1], VERSION[2], VERSION[3])
-    else:
-        return "%s.%s.%s" % (VERSION[0], VERSION[1], VERSION[2])
+    bits = [str(bit) for bit in VERSION]
+    version = bits[0]
+    for bit in bits[1:]:
+        version += (bit.isdigit() and '.' or '') + bit
+    return version
 
 
 def send_mail(subject, message, from_email, recipient_list,
