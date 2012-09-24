@@ -16,7 +16,7 @@ def get_version():
 
 def send_mail(subject, message, from_email, recipient_list,
               fail_silently=False, auth_user=None, auth_password=None,
-              priority=None):
+              priority=None, when_to_send=None):
     """
     Add a new message to the mail queue.
 
@@ -33,7 +33,10 @@ def send_mail(subject, message, from_email, recipient_list,
     subject = force_unicode(subject)
     email_message = EmailMessage(subject, message, from_email,
                                  recipient_list)
-    queue_email_message(email_message, priority=priority)
+    if when_to_send:
+        queue_email_message(email_message, priority=priority, when_to_send=when_to_send)
+    else:
+        queue_email_message(email_message, priority=priority)
 
 
 def mail_admins(subject, message, fail_silently=False, priority=None):
@@ -84,7 +87,7 @@ def mail_managers(subject, message, fail_silently=False, priority=None):
     send_mail(subject, message, from_email, recipient_list, priority=priority)
 
 
-def queue_email_message(email_message, fail_silently=False, priority=None):
+def queue_email_message(email_message, fail_silently=False, priority=None, when_to_send=None):
     """
     Add new messages to the email queue.
 
@@ -97,6 +100,9 @@ def queue_email_message(email_message, fail_silently=False, priority=None):
     The ``fail_silently`` argument is not used and is only provided to match
     the signature of the ``EmailMessage.send`` function which it may emulate
     (see ``queue_django_mail``).
+
+    The message can be queued to be sent at a future datetime by passing in the
+    `when_to_send' argument.
 
     """
     from django_mailer import constants, models, settings
@@ -120,7 +126,10 @@ def queue_email_message(email_message, fail_silently=False, priority=None):
             to_address=to_email, from_address=email_message.from_email,
             subject=email_message.subject,
             encoded_message=email_message.message().as_string())
-        queued_message = models.QueuedMessage(message=message)
+        if when_to_send:
+            queued_message = models.QueuedMessage(message=message, date_queued=when_to_send)
+        else:
+            queued_message = models.QueuedMessage(message=message)
         if priority:
             queued_message.priority = priority
         queued_message.save()
