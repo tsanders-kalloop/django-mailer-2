@@ -24,14 +24,20 @@ class Message(models.Model):
     easy of access for these common values. The ``encoded_message`` field
     contains the entire encoded email message ready to be sent to an SMTP
     connection.
+
+    The ``object_type`` and ``object_reference`` optional fields allow you to
+    associate a model object with the message.  This is potentially useful for
+    querying and managing future dates messages.
     
     """
     to_address = models.CharField(max_length=200)
     from_address = models.CharField(max_length=200)
     subject = models.CharField(max_length=255)
-
     encoded_message = models.TextField()
     date_created = models.DateTimeField(default=datetime.datetime.now)
+
+    object_type = models.CharField(max_length=200, null=True, blank=True)
+    object_reference = models.IntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ('date_created',)

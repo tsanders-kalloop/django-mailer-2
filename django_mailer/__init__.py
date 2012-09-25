@@ -87,7 +87,7 @@ def mail_managers(subject, message, fail_silently=False, priority=None):
     send_mail(subject, message, from_email, recipient_list, priority=priority)
 
 
-def queue_email_message(email_message, fail_silently=False, priority=None, when_to_send=None):
+def queue_email_message(email_message, fail_silently=False, priority=None, when_to_send=None, object_ref=None):
     """
     Add new messages to the email queue.
 
@@ -103,6 +103,8 @@ def queue_email_message(email_message, fail_silently=False, priority=None, when_
 
     The message can be queued to be sent at a future datetime by passing in the
     `when_to_send' argument.
+
+    ``object_ref`` is tuple of the form ('object type', 'object id').
 
     """
     from django_mailer import constants, models, settings
@@ -126,6 +128,9 @@ def queue_email_message(email_message, fail_silently=False, priority=None, when_
             to_address=to_email, from_address=email_message.from_email,
             subject=email_message.subject,
             encoded_message=email_message.message().as_string())
+        if object_ref:
+            message.object_type, message.object_reference = object_ref
+            message.save()
         if when_to_send:
             queued_message = models.QueuedMessage(message=message, date_queued=when_to_send)
         else:

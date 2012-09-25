@@ -53,6 +53,15 @@ class QueueMethods(object):
         """
         return self.exclude_future().exclude(deferred=None)
 
+    def reference_object(self, object_ref):
+        """
+        Return a QuerySet of all messages in the queue that have an
+        object reference that matches the supplied.
+
+        """
+        object_type, object_reference = object_ref
+        return self.filter(object_type=object_type, object_reference=object_reference)
+
 
 class QueueQuerySet(QueueMethods, models.query.QuerySet):
     pass
