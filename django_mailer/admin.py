@@ -3,7 +3,7 @@ from django_mailer import models
 
 
 class Message(admin.ModelAdmin):
-    list_display = ('to_address', 'subject', 'date_created')
+    list_display = ('to_address', 'subject', 'date_created', 'object_type', 'object_reference')
     list_filter = ('date_created',)
     search_fields = ('to_address', 'subject', 'from_address', 'encoded_message',)
     date_hierarchy = 'date_created'

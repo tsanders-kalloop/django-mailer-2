@@ -60,7 +60,7 @@ class QueueMethods(object):
 
         """
         object_type, object_reference = object_ref
-        return self.filter(object_type=object_type, object_reference=object_reference)
+        return self.filter(message__object_type=object_type, message__object_reference=object_reference)
 
 
 class QueueQuerySet(QueueMethods, models.query.QuerySet):

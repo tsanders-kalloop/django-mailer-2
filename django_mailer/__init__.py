@@ -16,7 +16,7 @@ def get_version():
 
 def send_mail(subject, message, from_email, recipient_list,
               fail_silently=False, auth_user=None, auth_password=None,
-              priority=None, when_to_send=None):
+              priority=None, when_to_send=None, object_ref=None):
     """
     Add a new message to the mail queue.
 
@@ -34,9 +34,15 @@ def send_mail(subject, message, from_email, recipient_list,
     email_message = EmailMessage(subject, message, from_email,
                                  recipient_list)
     if when_to_send:
-        queue_email_message(email_message, priority=priority, when_to_send=when_to_send)
+        if object_ref:
+            queue_email_message(email_message, priority=priority, when_to_send=when_to_send, object_ref=object_ref)
+        else:
+            queue_email_message(email_message, priority=priority, when_to_send=when_to_send)
     else:
-        queue_email_message(email_message, priority=priority)
+        if object_ref:
+            queue_email_message(email_message, priority=priority, object_ref=object_ref)
+        else:
+            queue_email_message(email_message, priority=priority)
 
 
 def mail_admins(subject, message, fail_silently=False, priority=None):
